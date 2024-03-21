@@ -1,0 +1,18 @@
+EXPERIMENT:
+  NAME: ""
+  TAG: "SDD_NKD,res32x4_sdd,mv2_sdd"
+  PROJECT: "cifar100_baselines"
+DISTILLER:
+  TYPE: "SDD_NKD"
+  TEACHER: "resnet32x4_sdd"
+  STUDENT: "MobileNetV2_sdd"
+SOLVER:
+  BATCH_SIZE: 64
+  EPOCHS: 240
+  LR: 0.01
+  LR_DECAY_STAGES: [150, 180, 210]
+  LR_DECAY_RATE: 0.1
+  WEIGHT_DECAY: 0.0005
+  MOMENTUM: 0.9
+  TYPE: "SGD"
+
