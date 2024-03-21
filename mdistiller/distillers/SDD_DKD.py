@@ -36,6 +36,9 @@ def dkd_loss(logits_student, logits_teacher, target, alpha, beta, temperature):
 
 
 def multi_dkd(out_s_multi, out_t_multi, target, alpha, beta, temperature):
+    ###############################shape convert######################
+    #  from B X C X N to N*B X C. Here N is the number of decoupled region
+    #####################
 
 
     out_s_multi_t = out_s_multi.permute(2, 0, 1)
@@ -46,7 +49,17 @@ def multi_dkd(out_s_multi, out_t_multi, target, alpha, beta, temperature):
     # print(out_s.shape)
     target_r = target.repeat(out_t_multi.shape[2])
 
+
+    ####################### calculat distillation loss##########################
+    # only conduct average or sum in the dim of calss and skip the dim of batch
+
     loss = dkd_loss(out_s, out_t, target_r, alpha, beta, temperature)
+
+
+
+
+    ######################find the complementary and consistent local distillation loss#############################
+
 
     out_t_predict = torch.argmax(out_t, dim=1)
 
@@ -92,6 +105,8 @@ def multi_dkd(out_s_multi, out_t_multi, target, alpha, beta, temperature):
     gt_lt = mask_true
 
     assert torch.sum(gt_lt) + torch.sum(gw_lw) + torch.sum(gt_lw) + torch.sum(gw_lt)==target_r.shape[0]
+
+    ########################################Modify the weight of complementary terms#######################
 
     index[gw_lw] = 1.0
     index[gt_lt] = 1.0

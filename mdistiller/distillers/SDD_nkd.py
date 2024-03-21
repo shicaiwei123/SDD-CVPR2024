@@ -69,8 +69,10 @@ def nkd_loss(logit_s, logit_t, gt_label, temp, gamma):
 
 
 def multi_nkd_loss(logit_s, logit_t, gt_label, temp, gamma):
-    loss_sum = torch.tensor(0.0)
-    sum_number = logit_s.shape[2]
+
+    ###############################shape convert######################
+    #  from B X C X N to N*B X C. Here N is the number of decoupled region
+    #####################
 
     out_s_multi_t = logit_s.permute(2, 0, 1)
     out_t_multi_t = logit_t.permute(2, 0, 1)
@@ -80,21 +82,24 @@ def multi_nkd_loss(logit_s, logit_t, gt_label, temp, gamma):
     # print(out_s.shape)
     target_r = gt_label.repeat(logit_t.shape[2])
 
+    ####################### calculat distillation loss##########################
+    # only conduct average or sum in the dim of calss and skip the dim of batch
+
     loss = nkd_loss(out_s, out_t, target_r, temp, gamma)
+
+
+    ######################find the complementary and consistent local distillation loss#############################
+
 
     out_t_predict = torch.argmax(out_t, dim=1)
 
     mask_true = out_t_predict == target_r
     mask_false = out_t_predict != target_r
 
-    # index template for global [256：320]
-
-    # global prediction
 
     target = gt_label
 
     global_prediction = out_t_predict[0:len(target)]
-    # global_prediction = out_t_predict[0:len(target)]
     global_prediction_true_mask = global_prediction == target
     global_prediction_false_mask = global_prediction != target
 
@@ -129,6 +134,7 @@ def multi_nkd_loss(logit_s, logit_t, gt_label, temp, gamma):
     gt_lt = mask_true
 
     # print(torch.sum(gt_lt) + torch.sum(gw_lw) + torch.sum(gt_lw) + torch.sum(gw_lt))
+    ########################################Modify the weight of complementary terms#######################
 
     index[gw_lw] = 1.0
     index[gt_lt] = 1.0

@@ -14,6 +14,11 @@ def kd_loss(logits_student, logits_teacher, temperature):
 
 
 def sdd_kd_loss(out_s_multi, out_t_multi, T, target):
+
+     ###############################shape convert######################
+        #  from B X C X N to N*B X C. Here N is the number of decoupled region
+     #####################
+
     out_s_multi = out_s_multi.permute(2, 0, 1)
     out_t_multi = out_t_multi.permute(2, 0, 1)
 
@@ -23,16 +28,22 @@ def sdd_kd_loss(out_s_multi, out_t_multi, T, target):
     target_r = target.repeat(out_t_multi.shape[0])
 
 
+    ####################### calculat distillation loss##########################
+
     p_s = F.log_softmax(out_s / T, dim=1)
     p_t = F.softmax(out_t / T, dim=1)
     loss_kd = F.kl_div(p_s, p_t, reduction='none') * (T ** 2)
     nan_index = torch.isnan(loss_kd)
     loss_kd[nan_index] = torch.tensor(0.0).cuda()
+
+
+     # only conduct average or sum in the dim of calss and skip the dim of batch
     loss_kd = torch.sum(loss_kd, dim=1)
 
-    out_t_predict = torch.argmax(out_t, dim=1)
 
-    # print(out_t_predict.shape,target_r.shape)
+    ######################find the complementary and consistent local distillation loss#############################
+
+    out_t_predict = torch.argmax(out_t, dim=1)
 
     mask_true = out_t_predict == target_r
     mask_false = out_t_predict != target_r
@@ -75,6 +86,8 @@ def sdd_kd_loss(out_s_multi, out_t_multi, T, target):
     gt_lt = mask_true
 
     # print(torch.sum(gt_lt) + torch.sum(gw_lw) + torch.sum(gt_lw) + torch.sum(gw_lt))
+
+########################################Modify the weight of complementary terms#######################
 
     index[gw_lw] = 1.0
     index[gt_lt] = 1.0
