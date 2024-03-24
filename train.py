@@ -5,8 +5,7 @@ import sys
 sys.path.append('..')
 
 # os.environ["OMP_NUM_THREADS"] = str(1)
-sys.path.append('/home/icml/shicaiwei/mddstillar_origin/mdistiller/mdistiller')
-sys.path.append('/home/icml/shicaiwei/mddstillar_origin/mdistiller/mdistiller/models')
+
 
 import os
 # os.environ["CUDA_VISIBLE_DEVICES"]='0'

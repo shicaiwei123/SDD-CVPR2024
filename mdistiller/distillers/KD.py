@@ -14,10 +14,9 @@ def kd_loss(logits_student, logits_teacher, temperature):
 
 
 def sdd_kd_loss(out_s_multi, out_t_multi, T, target):
-
-     ###############################shape convert######################
-        #  from B X C X N to N*B X C. Here N is the number of decoupled region
-     #####################
+    ###############################shape convert######################
+    #  from B X C X N to N*B X C. Here N is the number of decoupled region
+    #####################
 
     out_s_multi = out_s_multi.permute(2, 0, 1)
     out_t_multi = out_t_multi.permute(2, 0, 1)
@@ -27,7 +26,6 @@ def sdd_kd_loss(out_s_multi, out_t_multi, T, target):
 
     target_r = target.repeat(out_t_multi.shape[0])
 
-
     ####################### calculat distillation loss##########################
 
     p_s = F.log_softmax(out_s / T, dim=1)
@@ -36,10 +34,8 @@ def sdd_kd_loss(out_s_multi, out_t_multi, T, target):
     nan_index = torch.isnan(loss_kd)
     loss_kd[nan_index] = torch.tensor(0.0).cuda()
 
-
-     # only conduct average or sum in the dim of calss and skip the dim of batch
+    # only conduct average or sum in the dim of calss and skip the dim of batch
     loss_kd = torch.sum(loss_kd, dim=1)
-
 
     ######################find the complementary and consistent local distillation loss#############################
 
@@ -77,7 +73,6 @@ def sdd_kd_loss(out_s_multi, out_t_multi, T, target):
 
     # regurilize for similar
 
-
     # global wrong local wrong
     mask_false[global_prediction_true_mask_repeat] = False
     gw_lw = mask_false
@@ -87,7 +82,7 @@ def sdd_kd_loss(out_s_multi, out_t_multi, T, target):
 
     # print(torch.sum(gt_lt) + torch.sum(gw_lw) + torch.sum(gt_lw) + torch.sum(gw_lt))
 
-########################################Modify the weight of complementary terms#######################
+    ########################################Modify the weight of complementary terms#######################
 
     index[gw_lw] = 1.0
     index[gt_lt] = 1.0
@@ -136,7 +131,7 @@ class SDD_KD(Distiller):
         self.ce_loss_weight = cfg.KD.LOSS.CE_WEIGHT
         self.kd_loss_weight = cfg.KD.LOSS.KD_WEIGHT
         self.warmup = cfg.warmup
-
+        self.M=cfg.M
 
     def forward_train(self, image, target, **kwargs):
         logits_student, patch_s = self.student(image)
@@ -146,9 +141,20 @@ class SDD_KD(Distiller):
         # losses
         # *min(kwargs["epoch"] / self.warmup, 1.0)
         loss_ce = self.ce_loss_weight * F.cross_entropy(logits_student, target)
-        loss_kd = self.kd_loss_weight *sdd_kd_loss(
-            patch_s, patch_t, self.temperature, target
-        )
+
+        if self.M == '[1]':
+            # print("M1111111111")
+            print(logits_student.shape,logits_teacher.shape)
+            loss_kd =self.kd_loss_weight * kd_loss(
+                logits_student,
+                logits_teacher,
+                self.temperature,
+            )
+
+        else:
+            loss_kd = self.kd_loss_weight * sdd_kd_loss(
+                patch_s, patch_t, self.temperature, target
+            )
         losses_dict = {
             "loss_ce": loss_ce,
             "loss_kd": loss_kd,

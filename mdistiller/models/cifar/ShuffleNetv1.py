@@ -64,7 +64,7 @@ class Bottleneck(nn.Module):
 
 
 class ShuffleNet_SDD(nn.Module):
-    def __init__(self, cfg, num_classes=10,M=None):
+    def __init__(self, cfg, num_classes=10, M=None):
         super(ShuffleNet_SDD, self).__init__()
         out_planes = cfg["out_planes"]
         num_blocks = cfg["num_blocks"]
@@ -76,10 +76,11 @@ class ShuffleNet_SDD(nn.Module):
         self.layer1 = self._make_layer(out_planes[0], num_blocks[0], groups)
         self.layer2 = self._make_layer(out_planes[1], num_blocks[1], groups)
         self.layer3 = self._make_layer(out_planes[2], num_blocks[2], groups)
+        self.avgpool=nn.AvgPool2d(kernel_size=4)
         self.linear = nn.Linear(out_planes[2], num_classes)
         # self.stage_channels = out_channels
-        self.spp=SPP(M=M)
-        self.class_num=num_classes
+        self.spp = SPP(M=M)
+        self.class_num = num_classes
 
     def _make_layer(self, out_planes, num_blocks, groups):
         layers = []
@@ -94,99 +95,6 @@ class ShuffleNet_SDD(nn.Module):
                     groups=groups,
                     is_last=(i == num_blocks - 1),
                 )
-            )
-            self.in_planes = out_planes
-        return nn.Sequential(*layers)
-
-
-    def get_feat_modules(self):
-        feat_m = nn.ModuleList([])
-        feat_m.append(self.conv1)
-        feat_m.append(self.bn1)
-        feat_m.append(self.layer1)
-        feat_m.append(self.layer2)
-        feat_m.append(self.layer3)
-        return feat_m
-
-    def get_bn_before_relu(self):
-        raise NotImplementedError(
-            'ShuffleNet currently is not supported for "Overhaul" teacher'
-        )
-
-    def forward(
-        self,
-        x,
-    ):
-        out = F.relu(self.bn1(self.conv1(x)))
-        f0 = out
-        out, f1_pre = self.layer1(out)
-        f1 = out
-        out, f2_pre = self.layer2(out)
-        f2 = out
-        out, f3_pre = self.layer3(out)
-        f3 = out
-
-
-        x_spp,x_strength = self.spp(out)
-
-        x_spp = x_spp.permute((2, 0, 1))
-        m, b, c = x_spp.shape[0], x_spp.shape[1], x_spp.shape[2]
-        x_spp = torch.reshape(x_spp, (m * b, c))
-        patch_score = self.linear(x_spp)
-        patch_score = torch.reshape(patch_score, (m, b, self.class_num))
-        patch_score = patch_score.permute((1, 2, 0))
-
-
-        out = F.avg_pool2d(out, 4)
-        out = out.reshape(out.size(0), -1)
-        f4 = out
-        out = self.linear(out)
-
-        feats = {}
-        feats["feats"] = [f0, f1, f2, f3]
-        feats["preact_feats"] = [f0, f1_pre, f2_pre, f3_pre]
-        feats["pooled_feat"] = f4
-
-        return out, patch_score
-
-
-def ShuffleV1_sdd(**kwargs):
-    cfg = {"out_planes": [240, 480, 960], "num_blocks": [4, 8, 4], "groups": 3}
-    return ShuffleNet_SDD(cfg, **kwargs)
-
-
-
-
-
-class ShuffleNet(nn.Module):
-    def __init__(self, cfg, num_classes=10):
-        super(ShuffleNet, self).__init__()
-        out_planes = cfg["out_planes"]
-        num_blocks = cfg["num_blocks"]
-        groups = cfg["groups"]
-
-        self.conv1 = nn.Conv2d(3, 24, kernel_size=1, bias=False)
-        self.bn1 = nn.BatchNorm2d(24)
-        self.in_planes = 24
-        self.layer1 = self._make_layer(out_planes[0], num_blocks[0], groups)
-        self.layer2 = self._make_layer(out_planes[1], num_blocks[1], groups)
-        self.layer3 = self._make_layer(out_planes[2], num_blocks[2], groups)
-        self.linear = nn.Linear(out_planes[2], num_classes)
-        # self.stage_channels = out_channels
-
-    def _make_layer(self, out_planes, num_blocks, groups):
-        layers = []
-        for i in range(num_blocks):
-            stride = 2 if i == 0 else 1
-            cat_planes = self.in_planes if i == 0 else 0
-            layers.append(
-                Bottleneck(
-                    self.in_planes,
-                    out_planes - cat_planes,
-                    stride=stride,
-                    groups=groups,
-                    is_last=(i == num_blocks - 1),
-                    )
             )
             self.in_planes = out_planes
         return nn.Sequential(*layers)
@@ -217,7 +125,95 @@ class ShuffleNet(nn.Module):
         f2 = out
         out, f3_pre = self.layer3(out)
         f3 = out
-        out = F.avg_pool2d(out, 4)
+
+        x_spp, x_strength = self.spp(out)
+
+        x_spp = x_spp.permute((2, 0, 1))
+        m, b, c = x_spp.shape[0], x_spp.shape[1], x_spp.shape[2]
+        x_spp = torch.reshape(x_spp, (m * b, c))
+        patch_score = self.linear(x_spp)
+        patch_score = torch.reshape(patch_score, (m, b, self.class_num))
+        patch_score = patch_score.permute((1, 2, 0))
+
+        out = self.avgpool(out)
+        out = out.reshape(out.size(0), -1)
+        f4 = out
+        out = self.linear(out)
+
+        feats = {}
+        feats["feats"] = [f0, f1, f2, f3]
+        feats["preact_feats"] = [f0, f1_pre, f2_pre, f3_pre]
+        feats["pooled_feat"] = f4
+
+        return out, patch_score
+
+
+def ShuffleV1_sdd(**kwargs):
+    cfg = {"out_planes": [240, 480, 960], "num_blocks": [4, 8, 4], "groups": 3}
+    return ShuffleNet_SDD(cfg, **kwargs)
+
+
+class ShuffleNet(nn.Module):
+    def __init__(self, cfg, num_classes=10):
+        super(ShuffleNet, self).__init__()
+        out_planes = cfg["out_planes"]
+        num_blocks = cfg["num_blocks"]
+        groups = cfg["groups"]
+
+        self.conv1 = nn.Conv2d(3, 24, kernel_size=1, bias=False)
+        self.bn1 = nn.BatchNorm2d(24)
+        self.in_planes = 24
+        self.layer1 = self._make_layer(out_planes[0], num_blocks[0], groups)
+        self.layer2 = self._make_layer(out_planes[1], num_blocks[1], groups)
+        self.layer3 = self._make_layer(out_planes[2], num_blocks[2], groups)
+        self.avgpool = nn.AvgPool2d(kernel_size=4)
+        self.linear = nn.Linear(out_planes[2], num_classes)
+        # self.stage_channels = out_channels
+
+    def _make_layer(self, out_planes, num_blocks, groups):
+        layers = []
+        for i in range(num_blocks):
+            stride = 2 if i == 0 else 1
+            cat_planes = self.in_planes if i == 0 else 0
+            layers.append(
+                Bottleneck(
+                    self.in_planes,
+                    out_planes - cat_planes,
+                    stride=stride,
+                    groups=groups,
+                    is_last=(i == num_blocks - 1),
+                )
+            )
+            self.in_planes = out_planes
+        return nn.Sequential(*layers)
+
+    def get_feat_modules(self):
+        feat_m = nn.ModuleList([])
+        feat_m.append(self.conv1)
+        feat_m.append(self.bn1)
+        feat_m.append(self.layer1)
+        feat_m.append(self.layer2)
+        feat_m.append(self.layer3)
+        return feat_m
+
+    def get_bn_before_relu(self):
+        raise NotImplementedError(
+            'ShuffleNet currently is not supported for "Overhaul" teacher'
+        )
+
+    def forward(
+            self,
+            x,
+    ):
+        out = F.relu(self.bn1(self.conv1(x)))
+        f0 = out
+        out, f1_pre = self.layer1(out)
+        f1 = out
+        out, f2_pre = self.layer2(out)
+        f2 = out
+        out, f3_pre = self.layer3(out)
+        f3 = out
+        out = self.avgpool(out)
         out = out.reshape(out.size(0), -1)
         f4 = out
         out = self.linear(out)
@@ -233,8 +229,6 @@ class ShuffleNet(nn.Module):
 def ShuffleV1(**kwargs):
     cfg = {"out_planes": [240, 480, 960], "num_blocks": [4, 8, 4], "groups": 3}
     return ShuffleNet(cfg, **kwargs)
-
-
 
 
 if __name__ == "__main__":

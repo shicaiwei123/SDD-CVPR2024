@@ -2,8 +2,22 @@
 Official  code for cvpr2024 paper [Scale Decoupled Distillation](https://arxiv.org/pdf/2403.13512.pdf)
 
 
-# Framework
+# Introduction
+
+### Framework
 ![](framework.png)
+
+### Main result
+
+On CIFAR100
+![](cifar100.png)
+
+On ImageNet
+![](ImageNet.png)
+
+On CUB200
+![](cub20.png)
+
 
 # Installation
 
@@ -35,6 +49,10 @@ Training on ImageNet
   python -m torch.distributed.launch --nproc_per_node=2 train.py --cfg ./configs/imagenet/r34_r18/sdd_dkd.yaml
   ```
 
+Training on CUB200
+- Download the pretrained teacher model in the cub200 folder in [baiduyun](https://pan.baidu.com/s/1uxyG3ZZO67i_dbXwuFB2yQ?pwd=bzc6)
+- Mv the 'cub200' folder into the 'save' folder
+- Run the command in train_cub_x.sh
 
 Core code
 - We provide the implement of SD-KD ,SD-DKD, and SD-NKD in [KD.py](mdistiller%2Fdistillers%2FKD.py), [SDD_DKD.py](mdistiller%2Fdistillers%2FSDD_DKD.py), and [SDD_nkd.py](mdistiller%2Fdistillers%2FSDD_nkd.py)

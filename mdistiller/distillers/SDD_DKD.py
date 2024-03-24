@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from ._base import Distiller
+from .DKD import dkd_loss as dkd_loss_origin
 
 
 def dkd_loss(logits_student, logits_teacher, target, alpha, beta, temperature):
@@ -152,6 +153,7 @@ class SDD_DKD(Distiller):
         self.beta = cfg.DKD.BETA
         self.temperature = cfg.DKD.T
         self.warmup = cfg.warmup
+        self.M=cfg.M
 
     def forward_train(self, image, target, **kwargs):
         logits_student, patch_s = self.student(image)
@@ -161,14 +163,25 @@ class SDD_DKD(Distiller):
         # losses
         # print(self.warmup)
         loss_ce = self.ce_loss_weight * F.cross_entropy(logits_student, target)
-        loss_dkd = min(kwargs["epoch"] / self.warmup, 1.0) * multi_dkd(
-            patch_s,
-            patch_t,
-            target,
-            self.alpha,
-            self.beta,
-            self.temperature,
-        )
+
+        if self.M=='[1]':
+            loss_dkd = min(kwargs["epoch"] / self.warmup, 1.0) * dkd_loss_origin(
+                logits_student,
+                logits_teacher,
+                target,
+                self.alpha,
+                self.beta,
+                self.temperature,
+            )
+        else:
+            loss_dkd = min(kwargs["epoch"] / self.warmup, 1.0) * multi_dkd(
+                patch_s,
+                patch_t,
+                target,
+                self.alpha,
+                self.beta,
+                self.temperature,
+            )
         losses_dict = {
             "loss_ce": loss_ce,
             "loss_kd": loss_dkd,
