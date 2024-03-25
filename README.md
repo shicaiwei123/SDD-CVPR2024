@@ -46,7 +46,7 @@ Training on ImageNet
 - Download the dataset at https://image-net.org/ and put them to ./data/imagenet **or** if you have download it in your computer, build sotf link to ./data/imagenet.
 - run the commend in run.sh. For example,
   ```bash
-  python -m torch.distributed.launch --nproc_per_node=2 train.py --cfg ./configs/imagenet/r34_r18/sdd_dkd.yaml
+  python -m torch.distributed.launch --nproc_per_node=2 train.py --cfg ./configs/imagenet/r50_mv2/sdd_dkd.yaml
   ```
 
 Training on CUB200
