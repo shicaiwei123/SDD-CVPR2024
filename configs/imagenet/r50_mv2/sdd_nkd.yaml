@@ -8,9 +8,9 @@ DATASET:
   TEST:
     BATCH_SIZE: 128
 DISTILLER:
-  TYPE: "GLD_NKD"
-  TEACHER: "ResNet50"
-  STUDENT: "MobileNetV2"
+  TYPE: "SDD_NKD"
+  TEACHER: "ResNet50_sdd"
+  STUDENT: "MobileNetV2_sdd"
 SOLVER:
   BATCH_SIZE: 256
   EPOCHS: 100

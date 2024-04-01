@@ -10,6 +10,7 @@ class SPP(nn.Module):
         self.pooling_1x1 = nn.AdaptiveAvgPool2d((1, 1))
 
         self.M = M
+        print(self.M)
 
     def forward(self, x):
         x_4x4 = self.pooling_4x4(x)
@@ -22,9 +23,9 @@ class SPP(nn.Module):
 
         x_1x1_flatten = torch.flatten(x_1x1, start_dim=2, end_dim=3)
 
-        if self.M == [1, 2, 4]:
+        if self.M == '[1,2,4]':
             x_feature = torch.cat((x_1x1_flatten, x_2x2_flatten, x_4x4_flatten), dim=2)
-        elif self.M == [1, 2]:
+        elif self.M == '[1,2]':
             x_feature = torch.cat((x_1x1_flatten, x_2x2_flatten), dim=2)
         else:
             raise NotImplementedError('ERROR M')

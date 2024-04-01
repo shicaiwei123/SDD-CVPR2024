@@ -118,17 +118,17 @@ def main(cfg, resume, opts, distribution_arsg):
     else:
         print(log_msg("Loading teacher model", "INFO"))
         if cfg.DATASET.TYPE == "imagenet":
-            model_teacher = imagenet_model_dict[cfg.DISTILLER.TEACHER](pretrained=True)
-            model_student = imagenet_model_dict[cfg.DISTILLER.STUDENT](pretrained=False)
+            model_teacher = imagenet_model_dict[cfg.DISTILLER.TEACHER](pretrained=True,M=cfg.M)
+            model_student = imagenet_model_dict[cfg.DISTILLER.STUDENT](pretrained=False,M=cfg.M)
         else:
             net, pretrain_model_path = cifar_model_dict[cfg.DISTILLER.TEACHER]
             assert (
                     pretrain_model_path is not None
             ), "no pretrain model for teacher {}".format(cfg.DISTILLER.TEACHER)
-            model_teacher = net(num_classes=num_classes)
+            model_teacher = net(num_classes=num_classes,M=cfg.M)
             model_teacher.load_state_dict(load_checkpoint(pretrain_model_path)["model"])
             model_student = cifar_model_dict[cfg.DISTILLER.STUDENT][0](
-                num_classes=num_classes
+                num_classes=num_classes,M=cfg.M
             )
         if cfg.DISTILLER.TYPE == "CRD":
             distiller = distiller_dict[cfg.DISTILLER.TYPE](
@@ -181,6 +181,8 @@ if __name__ == "__main__":
                         help='random seed (default: 1)')
     parser.add_argument("--world-size", default=1, type=int, help="number of distributed processes")
     parser.add_argument("--dist-url", default="env://", type=str, help="url used to set up distributed training")
+    parser.add_argument("--M", default='[1,2,4]')
+
 
     args = parser.parse_args()
     # os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)
@@ -189,7 +191,8 @@ if __name__ == "__main__":
     cfg.merge_from_list(args.opts)
     cfg.local_rank = args.local_rank
     cfg.distributation = True
-    cfg.warmup=1
+    cfg.M = args.M
+    cfg.warmup=1.0
 
     cfg.freeze()
     main(cfg, args.resume, args.opts, args)

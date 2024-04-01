@@ -130,8 +130,8 @@ def main(cfg, resume, opts):
     else:
         print(log_msg("Loading teacher model", "INFO"))
         if cfg.DATASET.TYPE == "imagenet":
-            model_teacher = imagenet_model_dict[cfg.DISTILLER.TEACHER](pretrained=True)
-            model_student = imagenet_model_dict[cfg.DISTILLER.STUDENT](pretrained=False)
+            model_teacher = imagenet_model_dict[cfg.DISTILLER.TEACHER](pretrained=True,M=cfg.M)
+            model_student = imagenet_model_dict[cfg.DISTILLER.STUDENT](pretrained=False,M=cfg.M)
 
         elif cfg.DATASET.TYPE == "cub200":
 
@@ -145,7 +145,7 @@ def main(cfg, resume, opts):
 
             model_teacher.load_state_dict(load_checkpoint(pretrain_model_path)["model"])
             model_student = cub_model_dict[cfg.DISTILLER.STUDENT][0](
-                num_classes=num_classes, M=args.M
+                num_classes=num_classes, M=cfg.M
             )
             model_student = modify_student_model_for_cub200(model_student, cfg,n_cls=num_classes)
 
@@ -205,12 +205,7 @@ if __name__ == "__main__":
     cfg.merge_from_list(args.opts)
     cfg.distributation = False
     cfg.warmup = args.warmup
-    if args.M is not None:
-        # M=ast.literal_eval(args.M)
-        M = args.M
-    else:
-        M = args.M
-    cfg.M = M
+    cfg.M = args.M
     print(type(cfg.M))
     cfg.freeze()
     main(cfg, args.resume, args.opts)

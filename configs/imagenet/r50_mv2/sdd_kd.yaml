@@ -8,7 +8,7 @@ DATASET:
   TEST:
     BATCH_SIZE: 128
 DISTILLER:
-  TYPE: "SDD_DKD"
+  TYPE: "SDD_KD"
   TEACHER: "ResNet50_sdd"
   STUDENT: "MobileNetV2_sdd"
 SOLVER:
